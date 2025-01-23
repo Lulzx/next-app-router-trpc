@@ -1,101 +1,232 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { trpc } from '@/utils/trpc';
 
 export default function Home() {
-  return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [name, setName] = useState('');
+  const [id, setId] = useState(1);
+  const [filter, setFilter] = useState('');
+  const [helloResult, setHelloResult] = useState('');
+  const [complexResult, setComplexResult] = useState<any>(null);
+  const [profileData, setProfileData] = useState<any>(null);
+  const [posts, setPosts] = useState<any[]>([]);
+  const [cursor, setCursor] = useState<number | undefined>();
+  const [postInput, setPostInput] = useState({
+    title: '',
+    content: '',
+    tags: [] as string[],
+    isDraft: false
+  });
+  const [currentTag, setCurrentTag] = useState('');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+  const handleHelloWorld = async () => {
+    const result = await trpc.hello.query({ name });
+    setHelloResult(result.greeting);
+  };
+
+  const handleComplexData = async () => {
+    const result = await trpc.complexData.query({ id, filter });
+    setComplexResult(result);
+  };
+
+  const handleLoadProfile = async () => {
+    try {
+      const result = await trpc.profile.query();
+      setProfileData(result);
+    } catch (error) {
+      console.error('Failed to load profile:', error);
+    }
+  };
+
+  const handleCreatePost = async () => {
+    try {
+      const result = await trpc.createPost.mutate({
+        ...postInput,
+        tags: [...postInput.tags]
+      });
+      alert('Post created successfully!');
+      setPostInput({
+        title: '',
+        content: '',
+        tags: [],
+        isDraft: false
+      });
+    } catch (error) {
+      console.error('Failed to create post:', error);
+    }
+  };
+
+  const handleLoadPosts = async () => {
+    try {
+      const result = await trpc.posts.list.query({
+        limit: 5,
+        cursor
+      });
+      setPosts(prev => [...prev, ...result.items]);
+      setCursor(result.nextCursor);
+    } catch (error) {
+      console.error('Failed to load posts:', error);
+    }
+  };
+
+  const handleAddTag = () => {
+    if (currentTag && postInput.tags.length < 5) {
+      setPostInput(prev => ({
+        ...prev,
+        tags: [...prev.tags, currentTag]
+      }));
+      setCurrentTag('');
+    }
+  };
+
+
+  return (
+    <main className="min-h-screen p-24">
+      <div className="max-w-2xl mx-auto space-y-8">
+        <div className="p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold mb-4">Hello World Demo</h2>
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your name"
+              className="w-full p-2 border rounded"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+            <button
+              onClick={handleHelloWorld}
+              className="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600"
+            >
+              Say Hello
+            </button>
+            {helloResult && (
+              <div className="p-4 bg-gray-100 rounded">{helloResult}</div>
+            )}
+          </div>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+
+        <div className="p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold mb-4">Complex Data Demo</h2>
+          <div className="space-y-4">
+            <input
+              type="number"
+              value={id}
+              onChange={(e) => setId(Number(e.target.value))}
+              placeholder="Enter ID"
+              className="w-full p-2 border rounded"
+            />
+            <input
+              type="text"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="Enter filter"
+              className="w-full p-2 border rounded"
+            />
+            <button
+              onClick={handleComplexData}
+              className="w-full bg-green-500 text-white p-2 rounded hover:bg-green-600"
+            >
+              Fetch Complex Data
+            </button>
+            {complexResult && (
+              <pre className="p-4 bg-gray-100 rounded overflow-auto">
+                {JSON.stringify(complexResult, null, 2)}
+              </pre>
+            )}
+          </div>
+        </div>
+
+        <div className="p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold mb-4">Protected Profile</h2>
+          <button
+            onClick={handleLoadProfile}
+            className="w-full bg-purple-500 text-white p-2 rounded hover:bg-purple-600"
+          >
+            Load Profile
+          </button>
+          {profileData && (
+            <pre className="p-4 bg-gray-100 rounded mt-4 overflow-auto">
+              {JSON.stringify(profileData, null, 2)}
+            </pre>
+          )}
+        </div>
+
+        <div className="p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold mb-4">Create Post</h2>
+          <div className="space-y-4">
+            <input
+              type="text"
+              value={postInput.title}
+              onChange={(e) => setPostInput(prev => ({ ...prev, title: e.target.value }))}
+              placeholder="Post title"
+              className="w-full p-2 border rounded"
+            />
+            <textarea
+              value={postInput.content}
+              onChange={(e) => setPostInput(prev => ({ ...prev, content: e.target.value }))}
+              placeholder="Post content"
+              className="w-full p-2 border rounded h-24"
+            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={currentTag}
+                onChange={(e) => setCurrentTag(e.target.value)}
+                placeholder="Add tag"
+                className="flex-1 p-2 border rounded"
+              />
+              <button
+                onClick={handleAddTag}
+                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
+              >
+                Add Tag
+              </button>
+            </div>
+            {postInput.tags.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {postInput.tags.map((tag, index) => (
+                  <span key={index} className="bg-gray-200 px-2 py-1 rounded">{tag}</span>
+                ))}
+              </div>
+            )}
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={postInput.isDraft}
+                onChange={(e) => setPostInput(prev => ({ ...prev, isDraft: e.target.checked }))}
+              />
+              Save as draft
+            </label>
+            <button
+              onClick={handleCreatePost}
+              className="w-full bg-indigo-500 text-white p-2 rounded hover:bg-indigo-600"
+            >
+              Create Post
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 bg-white rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold mb-4">Posts List</h2>
+          <div className="space-y-4">
+            {posts.map((post) => (
+              <div key={post.id} className="p-4 border rounded">
+                <h3 className="text-xl font-semibold">{post.title}</h3>
+                <p className="text-gray-600">{post.excerpt}</p>
+              </div>
+            ))}
+            <button
+              onClick={handleLoadPosts}
+              className="w-full bg-teal-500 text-white p-2 rounded hover:bg-teal-600"
+            >
+              Load More Posts
+            </button>
+          </div>
+        </div>
+
+
+      </div>
+    </main>
   );
 }
